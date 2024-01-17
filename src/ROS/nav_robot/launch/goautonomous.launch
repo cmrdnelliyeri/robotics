@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<launch>    
+    
+    <!--################################## ODOM ###########################################  -->
+
+    <arg name="camera" default="camera" />
+    <!-- start sensor-->
+    <include file="$(find freenect_launch)/launch/freenect.launch">
+        <arg name="camera" default="$(arg camera)"/>
+    </include>
+    <!-- laserscan node-->
+    <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan">
+        <remap from="image" to="$(arg camera)/depth/image_raw"/>
+        <remap from="scan" to="/scan"/>
+        <rosparam>
+            output_frame_id: base_laser # Leave disabled to output scan in pointcloud frame
+            transform_tolerance: 0.01
+            scan_height: 1
+            scan_time: 0.03333
+            range_min: 0.45
+            range_max: 10.0          
+        </rosparam>
+    </node>
+    <!-- run odom and tf_broadcaster -->    
+    <node pkg="mobile_robot_odom" type="mobile_odom" name="odom" />
+    <node pkg="robot_setup_tf" type="tf_broadcaster" name="tf_robot" />  
+
+      
+  <!--################################## AMCL ###########################################  -->
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find nav_robot)/map/LabmapExtended.yaml" />
+  <include file="$(find amcl)/examples/amcl_diff.launch"/> 
+  <arg name="no_static_map" default="false"/>
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <!--<rosparam file="$(find nav_robot)/param/costmap_common_params.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find nav_robot)/param/costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find nav_robot)/param/local_costmap_params.yaml" command="load"/>
+    <rosparam file="$(find nav_robot)/param/global_costmap_params.yaml" command="load"/>
+    <rosparam file="$(find nav_robot)/param/global_costmap_params.yaml" command="load"/>--> 
+    <rosparam file="$(find nav_robot)/param/base_local_planner_params.yaml" command="load" />   
+
+    <!-- observation sources located in costmap_common.yaml -->
+    <rosparam file="$(find nav_robot)/param/costmap_common.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find nav_robot)/param/costmap_common.yaml" command="load" ns="local_costmap" />
+
+    <!-- local costmap, needs size -->
+    <rosparam file="$(find nav_robot)/param/costmap_local.yaml" command="load" ns="local_costmap" />
+    <param name="local_costmap/width" value="2.0"/>
+    <param name="local_costmap/height" value="2.0"/>
+
+    <!-- static global costmap, static map provides size -->
+    <rosparam file="$(find nav_robot)/param/costmap_global_static.yaml" command="load" ns="global_costmap" unless="$(arg no_static_map)"/>
+    
+    <!-- global costmap with laser, for odom_navigation_demo -->
+    <rosparam file="$(find nav_robot)/param/costmap_global_laser.yaml" command="load" ns="global_costmap" if="$(arg no_static_map)"/>
+    <param name="global_costmap/width" value="100.0" if="$(arg no_static_map)"/>
+    <param name="global_costmap/height" value="100.0" if="$(arg no_static_map)"/>
+  </node>
+
+
+   <!--################################## MOVEMENT AUTO ###########################################  -->
+   <node pkg="rosserial_python" type="serial_node.py" name="rosserial" output="screen" required="true">
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud" value="57600" />
+      </node>
+      <node pkg="nav_robot" name="speedchanger" type="RM_SPEED_CHANGER">
+	<param name="control" value="A" />
+      </node>
+      <node pkg="nav_robot" name="motorcontroller" type="SPEED_CONTROLLER"></node> 
+</launch>

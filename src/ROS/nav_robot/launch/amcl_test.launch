@@ -1,0 +1,16 @@
+<launch>
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find nav_robot)/map/LabmapExtended.yaml" />
+  <include file="$(find amcl)/examples/amcl_diff.launch"/> 
+  <arg name="no_static_map" default="false"/>
+  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"> 
+  </include>
+</launch>
+
+
+
+
+
+
+
+
+
